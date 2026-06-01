@@ -1,0 +1,25 @@
+Clear
+
+! ===========================================================
+! OpenDSS model converted from MATPOWER using PowerModels.jl
+! Source file: data/case33bw_modified.m
+! baseMVA = 10
+! baseKV  = 12.66
+! zbase_ohm = 16.02756
+! ===========================================================
+
+New Circuit.case33bw bus1=bus1.1.2.3 basekv=12.660000 pu=1.0 phases=3 angle=0 frequency=50.000000
+
+Set VoltageBases=[12.660000]
+CalcVoltageBases
+
+Redirect Lines.dss
+Redirect Loads.dss
+
+Set mode=snapshot
+Solve
+
+! Useful commands:
+! Show Voltages LN Nodes
+! Show Powers kVA Elements
+! Show Losses
