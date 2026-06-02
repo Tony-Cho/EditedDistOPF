@@ -1,5 +1,5 @@
 {
-    "solve_time": 6.289000034332275,
+    "solve_time": 9.108999967575073,
     "optimizer": "Ipopt",
     "termination_status": "LOCALLY_SOLVED",
     "dual_status": "FEASIBLE_POINT",

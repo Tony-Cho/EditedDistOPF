@@ -1,34 +1,40 @@
 # src/modify_case.jl
 
-function set_voltage_limits!(eng; vmin=0.95, vmax=1.05)
-    for (bus_name, bus) in eng["bus"]
-        terminals = get(bus, "terminals", Int[])
+import PowerModelsDistribution as PMD
+import InfrastructureModels as IM
+using Ipopt
+using JuMP
 
-        if isempty(terminals)
-            @warn "Bus $bus_name has no terminals. Skip."
-            continue
-        end
+function run_custom_opf(eng)
+    # 1. transform to MATHEMATICAL model
+    math = transform_data_model(eng)
 
-        n = length(terminals)
+    # 2. generate PowerModelsDistribution / JuMP model
+    pm = IM.instantiate_model(
+        math,
+        PMD.ACPUPowerModel,
+        PMD.build_mc_opf,  
+        PMD.ref_add_core!,
+        Set{String}(),
+        :pmd,
+        # ref_extensions = [PMD.ref_add_arcs_trans!],
+    )
 
-        bus["vm_lb"] = fill(vmin, n)
-        bus["vm_ub"] = fill(vmax, n)
+    print(pm.model)
 
-        if haskey(bus, "grounded")
-            for g in bus["grounded"]
-                idx = findfirst(==(g), terminals)
-                if idx !== nothing
-                    bus["vm_lb"][idx] = 0.0
-                    bus["vm_ub"][idx] = 0.0
-                end
-            end
-        end
-    end
+    # 3. modify JuMP model
+    model = pm.model
 
-    return eng
-end
+    # 4. add your own constraints / objective function
+    # @objective(model, Min,
+    #     sum((vm[i][c] - 1.0)^2 for i in keys(vm) for c in eachindex(vm[i]))
+    # )
 
-function add_dg!(eng, bus_name; pg_max=0.5, qg_max=0.2)
-    # 这里后面可以继续扩展
-    return eng
+    # 5. solve
+    result = optimize_model!(
+        pm,
+        optimizer = Ipopt.Optimizer
+    )
+
+    return result
 end
