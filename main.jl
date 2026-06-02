@@ -23,9 +23,9 @@ pf_result = run_pf(eng)
 print_summary(pf_result)
 save_result("result/pf_result.json", pf_result)
 
-# println("Running OPF...")
-# opf_result = run_opf(eng)
-# print_summary(opf_result)
-# save_result("result/opf_result.json", opf_result)
+println("Running OPF...")
+opf_result = run_opf(eng)
+print_summary(opf_result)
+save_result("result/opf_result.json", opf_result)
 
 println("Done.")
