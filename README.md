@@ -34,7 +34,7 @@ case33bw.m
 |postprocess.jl|保存和分析结果|后处理|
 |main.jl|调用所有模块|总入口|
 
-'''
+```
 IM.instantiate_model(
     data,             # MATHEMATICAL 网络数据
     model_type,       # 电力网络数学 formulation，例如 ACPUPowerModel
@@ -43,7 +43,7 @@ IM.instantiate_model(
     global_keys,      # multinetwork 全局字段，普通 OPF 用空 Set
     it_name,          # infrastructure 名称，PMD 用 :pmd
 )
-'''
+```
 
 可以，改 `PowerModelsDistribution.jl` 的 OPF 约束和目标函数，通常有 **三种层级**：
 
