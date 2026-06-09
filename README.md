@@ -1,27 +1,107 @@
 # EditedDistOPF
 
+## IEEE 33 节点配电网模型
+
+本项目使用 OpenDSS 格式的 IEEE 33 节点配电网测试系统，包含以下数据文件：
+
+### 数据文件结构
+
+```
+data/opendss_case33/
+├── Master.dss      # 主文件，定义电路和求解设置
+├── Lines.dss       # 线路参数定义
+└── Loads.dss       # 负荷参数定义
+```
+
+### 参数说明
+
+#### 1. Loads.dss - 负荷参数
+
+| 参数 | 含义 | 示例值 |
+|------|------|--------|
+| `phases` | 负荷相数 | `3`（三相） |
+| `bus1` | 连接母线及端子 | `bus2.1.2.3`（bus2 的 A、B、C 相） |
+| `conn` | 连接方式 | `wye`（星形）/ `delta`（三角形） |
+| `kv` | 额定电压（kV） | `12.66` |
+| `kw` | 有功功率（kW） | `100.0` |
+| `kvar` | 无功功率（kvar） | `60.0` |
+| `model` | 负荷模型 | `1`（恒功率）/ `2`（恒电流）/ `3`（恒阻抗） |
+| `status` | 负荷状态 | `variable`（可变）/ `fixed`（固定） |
+
+**示例**：
+```
+New Load.Load1 phases=3 bus1=bus2.1.2.3 conn=wye kv=12.66 kw=100 kvar=60 model=1 status=variable
+```
+
+#### 2. Lines.dss - 线路参数
+
+| 参数 | 含义 | 示例值 |
+|------|------|--------|
+| `phases` | 线路相数 | `3`（三相） |
+| `bus1` | 起始母线及端子 | `bus1.1.2.3` |
+| `bus2` | 终止母线及端子 | `bus2.1.2.3` |
+| `r1` | 正序电阻（Ω） | `0.0922` |
+| `x1` | 正序电抗（Ω） | `0.0470` |
+| `r0` | 零序电阻（Ω） | `0.0922` |
+| `x0` | 零序电抗（Ω） | `0.0470` |
+| `c1` | 正序电容（μF） | `0` |
+| `c0` | 零序电容（μF） | `0` |
+| `length` | 线路长度 | `1`（单位由 units 指定） |
+| `units` | 长度单位 | `km`（千米） |
+| `enabled` | 是否启用 | `yes` / `no` |
+| `switch` | 是否为开关 | `yes` / `no`（用于网络重构） |
+
+**示例**：
+```
+New Line.L1_1_2 phases=3 bus1=bus1.1.2.3 bus2=bus2.1.2.3 r1=0.0922 x1=0.0470 r0=0.0922 x0=0.0470 c1=0 c0=0 length=1 units=km enabled=yes
+```
+
+**开关线路示例**（初始断开，用于重构）：
+```
+New Line.L33_21_8 phases=3 bus1=bus21.1.2.3 bus2=bus8.1.2.3 r1=2.0 x1=2.0 r0=2.0 x0=2.0 c1=0 c0=0 length=1 units=km switch=yes enabled=no
+```
+
+#### 3. Master.dss - 主控制文件
+
+| 命令 | 作用 |
+|------|------|
+| `Clear` | 清除之前的电路定义 |
+| `New Circuit.case33bw` | 创建电路，定义基准电压、相数、频率等 |
+| `Set VoltageBases` | 设置电压基准值 |
+| `CalcVoltageBases` | 计算电压基准 |
+| `Redirect Lines.dss` | 导入线路定义文件 |
+| `Redirect Loads.dss` | 导入负荷定义文件 |
+| `Set mode=snapshot` | 设置求解模式为快照 |
+| `Solve` | 执行潮流计算 |
+
+**Circuit 参数**：
+```
+New Circuit.case33bw bus1=bus1.1.2.3 basekv=12.66 pu=1.0 phases=3 angle=0 frequency=50.0
+```
+- `bus1`：根节点（平衡节点）
+- `basekv`：基准电压（kV）
+- `pu`：标幺值基准
+- `phases`：系统相数
+- `angle`：参考相角（度）
+- `frequency`：系统频率（Hz）
+
+### MATPOWER 与 OpenDSS 数据对应关系
+
 ```
 case33bw.m
 │
-├── mpc.baseMVA
-│       └── Master.dss 中作为注释/基准信息
+├── mpc.baseMVA → Master.dss 中作为注释/基准信息
 │
 ├── mpc.bus
-│       ├── bus_i, baseKV
-│       │       └── Master.dss 中的电压等级、母线名称
-│       └── Pd, Qd
-│               └── Loads.dss 中的 kw, kvar
+│       ├── bus_i, baseKV → Master.dss 中的电压等级、母线名称
+│       └── Pd, Qd → Loads.dss 中的 kw, kvar
 │
 ├── mpc.branch
-│       ├── fbus, tbus
-│       │       └── Lines.dss 中的 bus1, bus2
-│       ├── r, x
-│       │       └── Lines.dss 中的 r1, x1
-│       └── status
-│               └── Lines.dss 中的 enabled=yes/no
+│       ├── fbus, tbus → Lines.dss 中的 bus1, bus2
+│       ├── r, x → Lines.dss 中的 r1, x1
+│       └── status → Lines.dss 中的 enabled=yes/no
 │
-└── mpc.gen
-        └── Master.dss 中的 Circuit source
+└── mpc.gen → Master.dss 中的 Circuit source（根节点）
 ```
 
 

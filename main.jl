@@ -27,8 +27,10 @@ save_result("result/pf_result.json", pf_result)
 
 println("-------------------------------------")
 println("Running OPF...")
-opf_result = run_opf(eng)
-print_summary(opf_result)
-save_result("result/opf_result.json", opf_result)
+opf_result_max, opf_result_min = run_custom_opf(eng)
+print_summary(opf_result_max)
+print_summary(opf_result_min)
+save_result("result/opf_result_max.json", opf_result_max)
+save_result("result/opf_result_min.json", opf_result_min)
 
 println("Done.")
