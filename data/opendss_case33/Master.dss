@@ -1,6 +1,7 @@
 Clear
 
 ! ===========================================================
+! IEEE 33 节点配电网 + VPP 虚拟电厂资源
 ! OpenDSS model converted from MATPOWER using PowerModels.jl
 ! Source file: data/case33bw_modified.m
 ! baseMVA = 10
@@ -8,18 +9,25 @@ Clear
 ! zbase_ohm = 16.02756
 ! ===========================================================
 
-New Circuit.case33bw bus1=bus1.1.2.3 basekv=12.660000 pu=1.0 phases=3 angle=0 frequency=50.000000
+New Circuit.case33bw_vpp bus1=bus1.1.2.3 basekv=12.66 pu=1.0 phases=3 angle=0 frequency=50.0
 
-Set VoltageBases=[12.660000]
+Set VoltageBases=[12.66]
 CalcVoltageBases
 
+! 基础配电网
 Redirect Lines.dss
 Redirect Loads.dss
+
+! VPP 虚拟电厂资源
+Redirect PVSystem.dss      ! 分布式光伏 (3个)
+Redirect Storage.dss         ! 分布式储能 (2个)
+Redirect EV_Loads.dss        ! 电动汽车充电桩 (4个)
+Redirect Flexible_Loads.dss  ! 智慧楼宇空调 (2个)
 
 Set mode=snapshot
 Solve
 
-! Useful commands:
+! 运行命令
 ! Show Voltages LN Nodes
 ! Show Powers kVA Elements
 ! Show Losses

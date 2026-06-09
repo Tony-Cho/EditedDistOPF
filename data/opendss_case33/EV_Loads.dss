@@ -1,0 +1,9 @@
+! ===========================================================
+! Electric Vehicle Chargers
+! ===========================================================
+
+! 电动汽车充电桩（可控负荷）
+New Load.EV1 phases=3 bus1=bus12.1.2.3 conn=wye kv=12.66 kw=100 kvar=50 model=1 status=variable
+New Load.EV2 phases=1 bus1=bus18.1 conn=wye kv=0.48 kw=7 kvar=3 model=1 status=variable
+New Load.EV3 phases=1 bus1=bus22.2 conn=wye kv=0.48 kw=7 kvar=3 model=1 status=variable
+New Load.EV4 phases=1 bus1=bus28.3 conn=wye kv=0.48 kw=7 kvar=3 model=1 status=variable

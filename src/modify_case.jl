@@ -27,7 +27,7 @@ function run_custom_opf(eng)
     @objective(pm_max.model, Max, sum(pg_max[1][c] for c in 1:3))
 
     # 求解
-    result_max = optimize_model!(
+    result_max = PMD.optimize_model!(
         pm_max,
         optimizer = Ipopt.Optimizer
     )
@@ -50,7 +50,7 @@ function run_custom_opf(eng)
     @objective(pm_min.model, Min, sum(pg_min[1][c] for c in 1:3))
 
     # 求解
-    result_min = optimize_model!(
+    result_min = PMD.optimize_model!(
         pm_min,
         optimizer = Ipopt.Optimizer
     )

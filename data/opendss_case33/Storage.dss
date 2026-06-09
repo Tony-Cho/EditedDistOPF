@@ -1,0 +1,14 @@
+! ===========================================================
+! Energy Storage Systems (BESS)
+! ===========================================================
+
+! 分布式储能设备 - 使用 OpenDSS Storage 元件
+! 储能充电: P>0 (吸收功率), 放电: P<0 (注入功率)
+
+New Storage.BESS_Bus20 phases=3 bus1=bus20.1.2.3 conn=wye kV=12.66 kW=100 kWh=1000 
+~ chargeEff=0.95 dischargeEff=0.95 maxChargeRate=100 maxDischargeRate=100 
+~ stateOfCharge=0.5 status=variable
+
+New Storage.BESS_Bus30 phases=3 bus1=bus30.1.2.3 conn=wye kV=12.66 kW=75 kWh=750 
+~ chargeEff=0.95 dischargeEff=0.95 maxChargeRate=75 maxDischargeRate=75 
+~ stateOfCharge=0.6 status=variable

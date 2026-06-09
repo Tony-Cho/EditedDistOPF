@@ -585,3 +585,166 @@ function run_opf(eng)
     return result
 end
 ```
+
+---
+
+## PowerModelsDistribution 解析 OpenDSS 不支持的参数
+
+PowerModelsDistribution 在解析 OpenDSS 文件时，部分参数可能不会被正确解析，需要在 Julia 代码中手动设置。以下是已知的不支持参数列表：
+
+### 1. Storage 元件（储能设备）
+
+| OpenDSS 参数 | 示例 | 说明 |
+|-------------|------|------|
+| `kwh` | `kWh=1000` | 储能容量 |
+| `chargeeff` | `chargeEff=0.95` | 充电效率 |
+| `dischargeeff` | `dischargeEff=0.95` | 放电效率 |
+| `maxchargerate` | `maxChargeRate=100` | 最大充电功率 |
+| `maxdischargerate` | `maxDischargeRate=100` | 最大放电功率 |
+| `stateofcharge` | `stateOfCharge=0.5` | 初始 SOC |
+| `status` | `status=variable` | 设备状态 |
+
+### 2. PVSystem 元件（光伏系统）
+
+| OpenDSS 参数 | 示例 | 说明 |
+|-------------|------|------|
+| `temperaturecoeff` | `temperatureCoeff=-0.004` | 温度系数 |
+| `status` | `status=variable` | 设备状态 |
+
+### 3. Generator 元件（发电机）
+
+| OpenDSS 参数 | 示例 | 说明 |
+|-------------|------|------|
+| `pmin` | `Pmin=-500` | 有功功率下限 |
+| `pmax` | `Pmax=0` | 有功功率上限 |
+| `qmin` | `Qmin=-150` | 无功功率下限 |
+| `qmax` | `Qmax=150` | 无功功率上限 |
+
+### 参数映射说明
+
+#### 功率参数
+```
+OpenDSS: kW=100  
+→ PowerModelsDistribution: ps=-100 (负值表示放电方向)
+```
+
+#### 模型类型
+```
+OpenDSS: model=1  
+→ PowerModelsDistribution: model=1 (恒功率模型)
+```
+
+#### 状态参数
+```
+OpenDSS: status=variable  
+→ PowerModelsDistribution: status=ENABLED (运行状态)
+```
+
+### 检测方法
+
+运行解析时，终端会输出警告信息，例如：
+```
+┌ PowerModelsDistribution | Warning ] : DssStorage has no field `kwh`, skipping...
+```
+
+### eng 模型参数修改方法
+
+**重要**：参数修改必须在 `parse_file()` 之后、`transform_data_model()` 之前进行。
+
+#### 修改时机
+
+```julia
+# ✓ 正确：在 parse_file 之后、transform_data_model 之前
+eng = PowerModelsDistribution.parse_file("data/opendss_case33/Master.dss")
+
+# 修改 eng 模型参数
+eng["storage"]["bess_bus20"]["charge_efficiency"] = 95.0
+eng["storage"]["bess_bus20"]["discharge_efficiency"] = 95.0
+eng["storage"]["bess_bus20"]["energy"] = 500.0    # 1000 kWh × 0.5 SOC
+eng["storage"]["bess_bus20"]["energy_ub"] = 1000.0  # 最大容量
+
+# 然后转换为数学模型
+math = PowerModelsDistribution.transform_data_model(eng)
+
+# ✗ 错误：在 transform_data_model 之后修改
+math = PowerModelsDistribution.transform_data_model(eng)
+math["storage"]["bess_bus20"]["charge_efficiency"] = 95.0  # 太晚了！
+```
+
+#### eng 模型中的正确字段名
+
+**储能 (storage) 可修改字段：**
+```julia
+eng["storage"]["bess_bus20"]["charge_efficiency"] = 0.95    # 充电效率 (0.0-1.0，不是百分比!)
+eng["storage"]["bess_bus20"]["discharge_efficiency"] = 0.95  # 放电效率 (0.0-1.0，不是百分比!)
+eng["storage"]["bess_bus20"]["energy"] = 500.0            # 当前能量 (kWh)
+eng["storage"]["bess_bus20"]["energy_ub"] = 1000.0        # 能量上限
+eng["storage"]["bess_bus20"]["energy_lb"] = 100.0        # 能量下限
+eng["storage"]["bess_bus20"]["charge_ub"] = 100.0        # 最大充电功率
+eng["storage"]["bess_bus20"]["discharge_ub"] = 100.0      # 最大放电功率
+eng["storage"]["bess_bus20"]["ps"] = 50.0                 # 当前功率设定
+eng["storage"]["bess_bus20"]["qs"] = 0.0                  # 无功功率设定
+eng["storage"]["bess_bus20"]["status"] = 1                # 状态 (1=运行)
+```
+
+**注意**：效率参数 `charge_efficiency` 和 `discharge_efficiency` 必须使用 0.0-1.0 的标幺值，**不要使用百分比**！例如 95% 效率应该写成 `0.95`，而不是 `95.0`。
+
+**光伏 (solar) 可修改字段：**
+```julia
+eng["solar"]["pv_bus10"]["ps"] = -400.0    # 有功功率 (负值=发电)
+eng["solar"]["pv_bus10"]["qs"] = 0.0       # 无功功率
+eng["solar"]["pv_bus10"]["pf"] = 0.95      # 功率因数
+eng["solar"]["pv_bus10"]["status"] = 1     # 状态 (1=运行)
+```
+
+#### 完整示例
+
+```julia
+using PowerModelsDistribution
+using Ipopt
+using JuMP
+
+# 1. 加载 OpenDSS 文件
+eng = PowerModelsDistribution.parse_file("data/opendss_case33/Master.dss")
+
+# 2. 修改 eng 模型参数（在转换之前）
+if haskey(eng, "storage")
+    for (id, storage) in eng["storage"]
+        # 修改效率
+        if haskey(storage, "charge_efficiency")
+            storage["charge_efficiency"] = 95.0
+        end
+        if haskey(storage, "discharge_efficiency")
+            storage["discharge_efficiency"] = 95.0
+        end
+        # 修改能量
+        if haskey(storage, "energy") && haskey(storage, "energy_ub")
+            storage["energy"] = storage["energy_ub"] * 0.5  # 50% SOC
+        end
+    end
+end
+
+# 3. 转换为数学模型
+math = PowerModelsDistribution.transform_data_model(eng)
+
+# 4. 构建并求解 OPF
+pm = IM.instantiate_model(
+    math,
+    PMD.ACPUPowerModel,
+    PMD.build_mc_opf,
+    PMD.ref_add_core!,
+    Set{String}(),
+    :pmd,
+)
+
+@objective(pm.model, Min, sum(PMD.var(pm, :pg)[1][c] for c in 1:3))
+result = optimize_model!(pm, optimizer = Ipopt.Optimizer)
+```
+
+### 注意事项
+
+1. **不要手动创建 solar/storage**：PowerModelsDistribution 内部使用特殊数据结构（如 `ConnConfig`），手动创建的格式可能不兼容。应该先从 OpenDSS 加载，再修改参数。
+
+2. **只修改标量值**：不要修改 `connections`、`configuration` 等连接相关字段，这些在转换过程中会自动处理。
+
+3. **检查字段是否存在**：使用 `haskey()` 检查字段是否存在，避免 KeyError。
